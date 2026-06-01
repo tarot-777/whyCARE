@@ -14,10 +14,6 @@
       url = "github:oh-my-fish/theme-bobthefish";
       flake = false;
     };
-    fish-keytool-completions = {
-      url = "github:Jomik/fish-keytool";
-      flake = false;
-    };
 
     rycee-nurpkgs = {
       url = "gitlab:rycee/nur-expressions?dir=pkgs/firefox-addons";
@@ -47,7 +43,6 @@
         # fish plugins
         (final: prev: {
           fish-bobthefish-theme = inputs.fish-bobthefish-theme;
-          fish-keytool-completions = inputs.fish-keytool-completions;
         })
       ];
 
