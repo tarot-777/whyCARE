@@ -34,15 +34,29 @@
   };
 
   # ── Deployment Graph ──
-  outputs = inputs@{ self, nixpkgs, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
+      
+      # ── Shared overlays for both NixOS and HM ──
+      sharedOverlays = [
+        # firefox-addons
+        (final: prev: {
+          inherit (inputs.rycee-nurpkgs.lib.x86_64-linux) buildFirefoxXpiAddon;
+        })
+        # fish plugins
+        (final: prev: {
+          fish-bobthefish-theme = inputs.fish-bobthefish-theme;
+          fish-keytool-completions = inputs.fish-keytool-completions;
+        })
+      ];
+
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        overlays = sharedOverlays;
       };
 
-      # ── HM with fish plugins from inputs ──
       malachi-config = import ./home/default.nix;
     in
     {
@@ -72,6 +86,7 @@
             # 5. Nixpkgs Config + Core Daemon Trust & Caching
             {
               nixpkgs.config.allowUnfree = true;
+              nixpkgs.overlays = sharedOverlays;
 
               nix.settings = {
                 trusted-users = [ "root" "malachi" ];
@@ -90,26 +105,7 @@
               };
             }
 
-            # 6. rycee firefox-addons overlay
-            {
-              nixpkgs.overlays = [
-                (final: prev: {
-                  inherit (inputs.rycee-nurpkgs.lib.x86_64-linux) buildFirefoxXpiAddon;
-                })
-              ];
-            }
-
-            # 7. Fish plugins overlay
-            {
-              nixpkgs.overlays = [
-                (final: prev: {
-                  fish-bobthefish-theme = inputs.fish-bobthefish-theme;
-                  fish-keytool-completions = inputs.fish-keytool-completions;
-                })
-              ];
-            }
-
-            # 8. User Environment Generation
+            # 6. User Environment Generation (via home-manager NixOS module)
             {
               home-manager = {
                 useGlobalPkgs = true;
@@ -126,7 +122,7 @@
       };
 
       # ── Home-Manager standalone (for `home-manager switch` CLI) ──
-      homeConfigurations.malachi = inputs.home-manager.lib.homeManagerConfiguration {
+      homeConfigurations.malachi = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
           inherit inputs;
@@ -135,12 +131,7 @@
         modules = [
           malachi-config
           {
-            nixpkgs.overlays = [
-              (final: prev: {
-                fish-bobthefish-theme = inputs.fish-bobthefish-theme;
-                fish-keytool-completions = inputs.fish-keytool-completions;
-              })
-            ];
+            nixpkgs.overlays = sharedOverlays;
           }
         ];
       };
